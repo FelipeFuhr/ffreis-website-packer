@@ -127,4 +127,3 @@ func printPlan(plan packer.WebsitePlan, bucket, prefix string, dryRun bool) {
 	fmt.Printf("uploads: %d\n", len(plan.Uploads))
 	fmt.Printf("deletes: %d\n", len(plan.Deletes))
 }
-

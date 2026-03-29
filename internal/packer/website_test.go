@@ -130,8 +130,8 @@ func TestBuildWebsitePlanDeletesExtras(t *testing.T) {
 	remote := map[string]struct{}{
 		testRemoteKeyIndexHTML: {},
 		testRemoteKeyAppJS:     {},
-		"p/assets/old.js":  {},
-		"p/assets/old.css": {},
+		"p/assets/old.js":      {},
+		"p/assets/old.css":     {},
 	}
 
 	plan := BuildWebsitePlan(local, remote, false)
