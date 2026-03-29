@@ -82,7 +82,10 @@ jobs:
       upload-sarif: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false }}
 
   snyk:
-    if: ${{ secrets.SNYK_TOKEN != '' }}
+    # Disabled by default because reusable workflow will fail when SNYK_TOKEN
+    # is missing/empty. Enable explicitly by setting repository variable:
+    #   SNYK_ENABLED=true
+    if: ${{ vars.SNYK_ENABLED == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false) }}
     permissions:
       contents: read
       security-events: write
@@ -92,4 +95,3 @@ jobs:
       upload-sarif: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false }}
     secrets:
       SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-
