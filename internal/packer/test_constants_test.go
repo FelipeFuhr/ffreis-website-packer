@@ -12,4 +12,3 @@ const (
 	testBucket = "bucket"
 	testPrefix = "p/"
 )
-
