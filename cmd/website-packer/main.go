@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
@@ -31,7 +32,7 @@ func main() {
 func run(args []string) int {
 	opts, err := parseArgs(args)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		_ = writeLine(os.Stderr, err.Error())
 		return 2
 	}
 
@@ -39,26 +40,26 @@ func run(args []string) int {
 
 	awsCfg, err := loadAWSConfig(ctx, opts.region)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to load AWS config: %v\n", err)
+		_ = writeErrorLine(os.Stderr, "failed to load AWS config: ", err)
 		return 1
 	}
 
 	prefix, err := packer.NormalizePrefix(opts.prefix)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		_ = writeLine(os.Stderr, err.Error())
 		return 2
 	}
 
 	local, err := packer.DiscoverWebsiteObjects(opts.dir, prefix)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "website discovery failed: %v\n", err)
+		_ = writeErrorLine(os.Stderr, "website discovery failed: ", err)
 		return 1
 	}
 
 	s3Client := s3.NewFromConfig(awsCfg)
 	remote, err := packer.ListRemoteKeys(ctx, s3Client, opts.bucket, prefix)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed listing s3://%s/%s: %v\n", opts.bucket, prefix, err)
+		_ = writeErrorLine(os.Stderr, "failed listing s3://"+opts.bucket+"/"+prefix+": ", err)
 		return 1
 	}
 
@@ -71,16 +72,16 @@ func run(args []string) int {
 
 	for _, o := range plan.Uploads {
 		if err := packer.PutWebsiteObject(ctx, s3Client, opts.bucket, o); err != nil {
-			fmt.Fprintf(os.Stderr, "upload failed for %s: %v\n", o.Key, err)
+			_ = writeErrorLine(os.Stderr, "upload failed for "+o.Key+": ", err)
 			return 1
 		}
 	}
 	if err := packer.DeleteKeys(ctx, s3Client, opts.bucket, plan.Deletes); err != nil {
-		fmt.Fprintf(os.Stderr, "delete failed: %v\n", err)
+		_ = writeErrorLine(os.Stderr, "delete failed: ", err)
 		return 1
 	}
 
-	fmt.Printf("done: uploaded=%d deleted=%d\n", len(plan.Uploads), len(plan.Deletes))
+	_ = writeLine(os.Stdout, "done: uploaded="+strconv.Itoa(len(plan.Uploads))+" deleted="+strconv.Itoa(len(plan.Deletes)))
 	return 0
 }
 
@@ -90,7 +91,7 @@ func parseArgs(args []string) (options, error) {
 	fs.SetOutput(io.Discard)
 
 	fs.StringVar(&opts.bucket, "bucket", "", "S3 bucket name (required)")
-	fs.StringVar(&opts.prefix, "prefix", "", "S3 key prefix (required, non-empty; e.g. sites/dev/)")
+	fs.StringVar(&opts.prefix, "prefix", "", "S3 key prefix (optional; empty means bucket root, e.g. sites/dev/)")
 	fs.StringVar(&opts.dir, "dir", "dist", "Website output dir to sync (recursive)")
 	fs.StringVar(&opts.region, "region", "", "AWS region override (optional)")
 	fs.BoolVar(&opts.dryRun, "dry-run", false, "Print planned actions without changing S3")
@@ -102,9 +103,6 @@ func parseArgs(args []string) (options, error) {
 
 	if opts.bucket == "" {
 		return options{}, fmt.Errorf("--bucket is required")
-	}
-	if opts.prefix == "" {
-		return options{}, fmt.Errorf("--prefix is required and must be non-empty")
 	}
 	return opts, nil
 }
@@ -121,9 +119,18 @@ func printPlan(plan packer.WebsitePlan, bucket, prefix string, dryRun bool) {
 	if dryRun {
 		mode = "dry-run"
 	}
-	fmt.Printf("website-packer (%s)\n", mode)
-	fmt.Printf("bucket: %s\n", bucket)
-	fmt.Printf("prefix: %s\n", prefix)
-	fmt.Printf("uploads: %d\n", len(plan.Uploads))
-	fmt.Printf("deletes: %d\n", len(plan.Deletes))
+	_ = writeLine(os.Stdout, "website-packer ("+mode+")")
+	_ = writeLine(os.Stdout, "bucket: "+bucket)
+	_ = writeLine(os.Stdout, "prefix: "+prefix)
+	_ = writeLine(os.Stdout, "uploads: "+strconv.Itoa(len(plan.Uploads)))
+	_ = writeLine(os.Stdout, "deletes: "+strconv.Itoa(len(plan.Deletes)))
+}
+
+func writeLine(w io.Writer, line string) error {
+	_, err := io.WriteString(w, line+"\n")
+	return err
+}
+
+func writeErrorLine(w io.Writer, prefix string, err error) error {
+	return writeLine(w, prefix+err.Error())
 }

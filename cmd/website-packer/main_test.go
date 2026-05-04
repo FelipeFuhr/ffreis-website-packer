@@ -28,7 +28,9 @@ func TestParseArgsRequiresPrefix(t *testing.T) {
 	t.Parallel()
 
 	_, err := parseArgs([]string{"--bucket", testBucket})
-	requireErr(t, err)
+	if err != nil {
+		t.Fatalf(testUnexpectedErrorFmt, err)
+	}
 }
 
 func TestParseArgsOK(t *testing.T) {
@@ -39,6 +41,18 @@ func TestParseArgsOK(t *testing.T) {
 		t.Fatalf(testUnexpectedErrorFmt, err)
 	}
 	if opts.bucket != testBucket || opts.prefix != testPrefix {
+		t.Fatalf("unexpected opts: %#v", opts)
+	}
+}
+
+func TestParseArgsAllowsRootPrefix(t *testing.T) {
+	t.Parallel()
+
+	opts, err := parseArgs([]string{"--bucket", testBucket, "--prefix", "/"})
+	if err != nil {
+		t.Fatalf(testUnexpectedErrorFmt, err)
+	}
+	if opts.prefix != "/" {
 		t.Fatalf("unexpected opts: %#v", opts)
 	}
 }
