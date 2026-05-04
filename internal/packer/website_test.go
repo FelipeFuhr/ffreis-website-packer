@@ -73,6 +73,20 @@ func TestNormalizePrefix(t *testing.T) {
 	}
 }
 
+func TestNormalizePrefixAllowsBucketRoot(t *testing.T) {
+	t.Parallel()
+
+	for _, input := range []string{"", "/", "   "} {
+		got, err := NormalizePrefix(input)
+		if err != nil {
+			t.Fatalf(testUnexpectedErrorFmt, err)
+		}
+		if got != "" {
+			t.Fatalf("NormalizePrefix(%q) = %q, want empty string", input, got)
+		}
+	}
+}
+
 func TestDiscoverWebsiteObjectsBuildsKeys(t *testing.T) {
 	t.Parallel()
 
