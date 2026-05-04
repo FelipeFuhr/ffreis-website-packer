@@ -35,7 +35,7 @@ func NormalizePrefix(prefix string) (string, error) {
 	if p == "" || p == "/" {
 		return "", nil
 	}
-	p = strings.TrimPrefix(p, "/")
+	p = strings.TrimLeft(p, "/")
 	if p == "" {
 		return "", nil
 	}

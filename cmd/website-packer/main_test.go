@@ -24,7 +24,7 @@ func TestParseArgsRequiresBucket(t *testing.T) {
 	requireErr(t, err)
 }
 
-func TestParseArgsRequiresPrefix(t *testing.T) {
+func TestParseArgsAllowsEmptyPrefix(t *testing.T) {
 	t.Parallel()
 
 	_, err := parseArgs([]string{"--bucket", testBucket})

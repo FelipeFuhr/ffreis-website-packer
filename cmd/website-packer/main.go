@@ -91,7 +91,7 @@ func parseArgs(args []string) (options, error) {
 	fs.SetOutput(io.Discard)
 
 	fs.StringVar(&opts.bucket, "bucket", "", "S3 bucket name (required)")
-	fs.StringVar(&opts.prefix, "prefix", "", "S3 key prefix (optional; empty means bucket root, e.g. sites/dev/)")
+	fs.StringVar(&opts.prefix, "prefix", "", "S3 key prefix (optional; omit or leave empty for bucket root, e.g. sites/dev/)")
 	fs.StringVar(&opts.dir, "dir", "dist", "Website output dir to sync (recursive)")
 	fs.StringVar(&opts.region, "region", "", "AWS region override (optional)")
 	fs.BoolVar(&opts.dryRun, "dry-run", false, "Print planned actions without changing S3")
@@ -132,5 +132,5 @@ func writeLine(w io.Writer, line string) error {
 }
 
 func writeErrorLine(w io.Writer, prefix string, err error) error {
-	return writeLine(w, prefix+err.Error())
+	return writeLine(w, prefix+fmt.Sprintf("%v", err))
 }
