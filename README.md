@@ -16,3 +16,5 @@ go run ./cmd/website-packer \
 
 Use `--dry-run` to preview changes or `--no-delete` to only upload/update.
 
+Omit `--prefix` to publish to the bucket root.
+
