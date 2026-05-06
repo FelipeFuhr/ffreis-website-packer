@@ -96,6 +96,28 @@ func TestNormalizePrefixRejectsEmpty(t *testing.T) {
 	}
 }
 
+func TestNormalizePrefixStripsLeadingSlashes(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		input string
+		want  string
+	}{
+		{"/sites/dev", "sites/dev/"},
+		{"//sites/dev/", "sites/dev/"},
+		{"/sites/dev/", "sites/dev/"},
+	}
+	for _, tc := range cases {
+		got, err := NormalizePrefix(tc.input)
+		if err != nil {
+			t.Fatalf("NormalizePrefix(%q): unexpected error: %v", tc.input, err)
+		}
+		if got != tc.want {
+			t.Fatalf("NormalizePrefix(%q) = %q, want %q", tc.input, got, tc.want)
+		}
+	}
+}
+
 func TestDiscoverWebsiteObjectsBuildsKeys(t *testing.T) {
 	t.Parallel()
 
