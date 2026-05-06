@@ -46,4 +46,3 @@ jobs:
       target-branch: "main"
     secrets:
       RELEASE_PLEASE_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
-

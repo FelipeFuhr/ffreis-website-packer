@@ -43,4 +43,3 @@ jobs:
           {"label":"packer","patterns":["**/*.pkr.hcl","packer/**"]},
           {"label":"docs","patterns":["**/*.md"]}
         ]
-

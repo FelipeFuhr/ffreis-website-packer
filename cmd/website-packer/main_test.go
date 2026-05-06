@@ -24,13 +24,11 @@ func TestParseArgsRequiresBucket(t *testing.T) {
 	requireErr(t, err)
 }
 
-func TestParseArgsAllowsEmptyPrefix(t *testing.T) {
+func TestParseArgsRequiresPrefix(t *testing.T) {
 	t.Parallel()
 
 	_, err := parseArgs([]string{"--bucket", testBucket})
-	if err != nil {
-		t.Fatalf(testUnexpectedErrorFmt, err)
-	}
+	requireErr(t, err)
 }
 
 func TestParseArgsOK(t *testing.T) {
