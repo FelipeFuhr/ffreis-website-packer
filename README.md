@@ -16,5 +16,7 @@ go run ./cmd/website-packer \
 
 Use `--dry-run` to preview changes or `--no-delete` to only upload/update.
 
-Omit `--prefix` to publish to the bucket root.
+To publish to the bucket root, pass `--prefix /`. Without `--no-delete`, the tool
+reconciles against the entire bucket and **will delete any remote object not present
+locally** — use `--dry-run` first to review the plan before applying.
 
