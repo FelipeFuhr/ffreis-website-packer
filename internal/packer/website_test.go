@@ -73,16 +73,47 @@ func TestNormalizePrefix(t *testing.T) {
 	}
 }
 
-func TestNormalizePrefixAllowsBucketRoot(t *testing.T) {
+func TestNormalizePrefixAllowsSlashAsRoot(t *testing.T) {
 	t.Parallel()
 
-	for _, input := range []string{"", "/", "   "} {
-		got, err := NormalizePrefix(input)
-		if err != nil {
-			t.Fatalf(testUnexpectedErrorFmt, err)
+	got, err := NormalizePrefix("/")
+	if err != nil {
+		t.Fatalf(testUnexpectedErrorFmt, err)
+	}
+	if got != "" {
+		t.Fatalf("NormalizePrefix(\"/\") = %q, want empty string", got)
+	}
+}
+
+func TestNormalizePrefixRejectsEmpty(t *testing.T) {
+	t.Parallel()
+
+	for _, input := range []string{"", "   "} {
+		_, err := NormalizePrefix(input)
+		if err == nil {
+			t.Fatalf("NormalizePrefix(%q): expected error, got nil", input)
 		}
-		if got != "" {
-			t.Fatalf("NormalizePrefix(%q) = %q, want empty string", input, got)
+	}
+}
+
+func TestNormalizePrefixStripsLeadingSlashes(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		input string
+		want  string
+	}{
+		{"/sites/dev", "sites/dev/"},
+		{"//sites/dev/", "sites/dev/"},
+		{"/sites/dev/", "sites/dev/"},
+	}
+	for _, tc := range cases {
+		got, err := NormalizePrefix(tc.input)
+		if err != nil {
+			t.Fatalf("NormalizePrefix(%q): unexpected error: %v", tc.input, err)
+		}
+		if got != tc.want {
+			t.Fatalf("NormalizePrefix(%q) = %q, want %q", tc.input, got, tc.want)
 		}
 	}
 }
