@@ -32,13 +32,13 @@ var hashedAssetToken = regexp.MustCompile(`(?i)[._-][a-f0-9]{8,}[._-]`)
 
 func NormalizePrefix(prefix string) (string, error) {
 	p := strings.TrimSpace(prefix)
-	if p == "" || p == "/" {
+	if p == "" {
+		return "", fmt.Errorf("--prefix is required; use \"/\" to target the bucket root")
+	}
+	if p == "/" {
 		return "", nil
 	}
 	p = strings.TrimPrefix(p, "/")
-	if p == "" {
-		return "", nil
-	}
 	if !strings.HasSuffix(p, "/") {
 		p += "/"
 	}
