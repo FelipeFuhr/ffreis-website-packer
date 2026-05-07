@@ -32,11 +32,14 @@ var hashedAssetToken = regexp.MustCompile(`(?i)[._-][a-f0-9]{8,}[._-]`)
 
 func NormalizePrefix(prefix string) (string, error) {
 	p := strings.TrimSpace(prefix)
-	if p == "" || p == "/" {
-		return "", nil
-	}
-	p = strings.TrimPrefix(p, "/")
 	if p == "" {
+		return "", fmt.Errorf("--prefix is required; use \"/\" to target the bucket root")
+	}
+	// Strip leading slashes so callers can pass "/sites/dev" or "//sites/dev/"
+	// without accidentally creating S3 keys under a leading-slash namespace.
+	p = strings.TrimLeft(p, "/")
+	if p == "" {
+		// Input was "/" or all slashes → bucket root.
 		return "", nil
 	}
 	if !strings.HasSuffix(p, "/") {

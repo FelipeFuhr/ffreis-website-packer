@@ -34,7 +34,7 @@ linters:
         - copylocks
     errcheck:
       check-type-assertions: true
-      check-blank: false  # `_ = expr` is intentional in tests
+      check-blank: true
     godot:
       scope: declarations
       capital: false
@@ -52,7 +52,7 @@ formatters:
   settings:
     goimports:
       local-prefixes:
-        - github.com/ffreis
+        - github.com/felipefuhr
 
 issues:
   max-issues-per-linter: 0
