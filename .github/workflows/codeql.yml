@@ -19,7 +19,6 @@ concurrency:
 
 jobs:
   codeql:
-    timeout-minutes: 30
     # GitHub Code Scanning can be enabled/disabled per-repo.
     # Enable explicitly by setting repository variable:
     #   CODEQL_ENABLED=true
