@@ -9,6 +9,7 @@ on:
         description: "Reason for manual run (optional)"
         required: false
         type: string
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -18,6 +19,7 @@ permissions:
 
 jobs:
   mutation:
+    timeout-minutes: 30
     uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-mutation.yml@6a9b12a1c8b8a6a8ba0002a8077a1713ddf31be8
     with:
       packages: "./internal/..."

@@ -2,7 +2,6 @@ package packer
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -49,6 +48,13 @@ func objectIdentifiers(keys []string) []types.ObjectIdentifier {
 	return objs
 }
 
+// firstDeleteError summarises a DeleteObjects response that reported one or
+// more per-object failures. It returns the first failure's key+message and
+// also the total failure count, so callers don't silently treat a 5-key
+// partial failure as a single-key issue.
+//
+// DeleteObjects responses with Errors=[] (or out=nil) indicate every object
+// in the batch was deleted; in that case nil is returned.
 func firstDeleteError(out *s3.DeleteObjectsOutput) error {
 	if out == nil || len(out.Errors) == 0 {
 		return nil
@@ -60,8 +66,16 @@ func firstDeleteError(out *s3.DeleteObjectsOutput) error {
 	if msg == "" {
 		msg = "delete failed"
 	}
-	if key != "" {
-		return fmt.Errorf("%w: %s (%s)", errors.New(msg), msg, key)
+
+	total := len(out.Errors)
+	switch {
+	case total == 1 && key != "":
+		return fmt.Errorf("delete failed for %q: %s", key, msg)
+	case total == 1:
+		return fmt.Errorf("delete failed: %s", msg)
+	case key != "":
+		return fmt.Errorf("delete failed for %d objects (first: %q: %s)", total, key, msg)
+	default:
+		return fmt.Errorf("delete failed for %d objects (first: %s)", total, msg)
 	}
-	return errors.New(msg)
 }
