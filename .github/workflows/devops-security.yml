@@ -50,6 +50,7 @@ jobs:
 
   codeql:
     timeout-minutes: 30
+    if: ${{ github.event_name != 'pull_request' }}
     permissions:
       actions: read
       contents: read
