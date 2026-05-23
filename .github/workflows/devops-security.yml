@@ -42,7 +42,7 @@ jobs:
       contents: read
       actions: read
       security-events: write
-    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-gitleaks.yml@01e2b12e992621fecf074b8a202f66044196f3bf
+    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-gitleaks.yml@5dfbb4986ceb88f6518fa719da3a255294cf03cf
     with:
       working-directory: "."
       scan-history: true
@@ -55,7 +55,7 @@ jobs:
       actions: read
       contents: read
       security-events: write
-    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-codeql.yml@01e2b12e992621fecf074b8a202f66044196f3bf
+    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-codeql.yml@5dfbb4986ceb88f6518fa719da3a255294cf03cf
     with:
       languages: "go"
       source-root: "."
@@ -91,7 +91,7 @@ jobs:
       contents: read
       actions: read
       security-events: write
-    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-scan-trivy-fs.yml@01e2b12e992621fecf074b8a202f66044196f3bf
+    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-scan-trivy-fs.yml@5dfbb4986ceb88f6518fa719da3a255294cf03cf
     with:
       scan-ref: "."
       upload-sarif: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false }}
@@ -108,7 +108,7 @@ jobs:
       contents: read
       actions: read
       security-events: write
-    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-scan-grype-fs.yml@01e2b12e992621fecf074b8a202f66044196f3bf
+    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-scan-grype-fs.yml@5dfbb4986ceb88f6518fa719da3a255294cf03cf
     with:
       path: "."
       upload-sarif: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false }}
@@ -125,7 +125,7 @@ jobs:
       contents: read
       actions: read
       security-events: write
-    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-osv-scanner.yml@01e2b12e992621fecf074b8a202f66044196f3bf
+    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-osv-scanner.yml@5dfbb4986ceb88f6518fa719da3a255294cf03cf
     with:
       working-directory: "."
       upload-sarif: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false }}
