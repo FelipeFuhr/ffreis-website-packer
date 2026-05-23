@@ -25,7 +25,7 @@ vet:
 	$(GO) vet ./...
 
 test:
-	$(GO) test ./... -count=1
+	$(GO) test -race -shuffle=on ./... -count=1
 
 check: fmt-check vet test
 
