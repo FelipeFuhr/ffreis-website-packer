@@ -29,7 +29,7 @@ jobs:
 
   stale:
     timeout-minutes: 15
-    if: vars.STALE_ENABLED == 'true' && github.event_name != 'pull_request'
+    if: vars.STALE_ENABLED == 'true' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
     permissions:
       contents: read
       issues: write
