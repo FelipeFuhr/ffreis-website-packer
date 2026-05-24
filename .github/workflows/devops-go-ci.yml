@@ -15,10 +15,6 @@ on:
       - "go.sum"
       - ".github/workflows/**"
 
-permissions:
-  contents: read
-  actions: write
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -26,6 +22,8 @@ concurrency:
 jobs:
   mod-tidy:
     timeout-minutes: 15
+    permissions:
+      contents: read
     uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-mod-tidy-check.yml@d9b0146bb491bf06a79c9c6289034537522cbed3
     with:
       go-version: "1.25.8"
@@ -33,6 +31,8 @@ jobs:
 
   fmt:
     timeout-minutes: 15
+    permissions:
+      contents: read
     uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-fmt.yml@d9b0146bb491bf06a79c9c6289034537522cbed3
     with:
       go-version: "1.25.8"
@@ -41,6 +41,9 @@ jobs:
   lint:
     timeout-minutes: 15
     needs: [fmt]
+    permissions:
+      contents: read
+      pull-requests: read
     uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-lint.yml@d9b0146bb491bf06a79c9c6289034537522cbed3
     with:
       go-version: "1.25.8"
@@ -50,6 +53,8 @@ jobs:
     timeout-minutes: 30
     if: ${{ !github.event.pull_request.draft }}
     needs: [fmt]
+    permissions:
+      contents: read
     uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-test.yml@d9b0146bb491bf06a79c9c6289034537522cbed3
     with:
       go-version: "1.25.8"
