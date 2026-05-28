@@ -11,18 +11,21 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/cloudfront"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 
 	"github.com/felipefuhr/ffreis-website-packer/internal/packer"
 )
 
 type options struct {
-	bucket   string
-	prefix   string
-	dir      string
-	region   string
-	dryRun   bool
-	noDelete bool
+	bucket          string
+	prefix          string
+	dir             string
+	region          string
+	dryRun          bool
+	noDelete        bool
+	cloudfrontID    string
+	cloudfrontPaths string
 }
 
 func main() {
@@ -81,6 +84,19 @@ func run(args []string) int {
 		return 1
 	}
 
+	if opts.cloudfrontID != "" {
+		cfClient := cloudfront.NewFromConfig(awsCfg)
+		paths := opts.cloudfrontPaths
+		if paths == "" {
+			paths = "/*"
+		}
+		writeLine(os.Stdout, "invalidating cloudfront distribution "+opts.cloudfrontID+" paths="+paths)
+		if err := packer.InvalidateDistribution(ctx, cfClient, opts.cloudfrontID, paths); err != nil {
+			writeErrorLine(os.Stderr, "cloudfront invalidation failed: ", err)
+			return 1
+		}
+	}
+
 	writeLine(os.Stdout, "done: uploaded="+strconv.Itoa(len(plan.Uploads))+" deleted="+strconv.Itoa(len(plan.Deletes)))
 	return 0
 }
@@ -96,6 +112,8 @@ func parseArgs(args []string) (options, error) {
 	fs.StringVar(&opts.region, "region", "", "AWS region override (optional)")
 	fs.BoolVar(&opts.dryRun, "dry-run", false, "Print planned actions without changing S3")
 	fs.BoolVar(&opts.noDelete, "no-delete", false, "Upload/update only (do not delete remote extras)")
+	fs.StringVar(&opts.cloudfrontID, "cloudfront-id", "", "CloudFront distribution ID to invalidate after sync (optional)")
+	fs.StringVar(&opts.cloudfrontPaths, "cloudfront-paths", "", "Comma-separated invalidation paths (default \"/*\"; only used when --cloudfront-id is set)")
 
 	if err := fs.Parse(args); err != nil {
 		return options{}, err
