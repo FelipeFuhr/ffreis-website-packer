@@ -8,7 +8,7 @@ directly to the live bucket.
 For the complete system map — how this repo relates to the deployer, the data repos,
 and S3 infrastructure — see the private fleet inventory repository:
 
-> `the fleet inventory` → `AGENTS.md`
+> the fleet inventory repo → `AGENTS.md`
 
 Architecture detail (packer vs. aws s3 sync, when each is used): `AGENTS.md`
 links to `docs/ARCHITECTURE.md` in the same repo.
@@ -41,8 +41,8 @@ CI workflows.
 Use `--cloudfront-id` instead so invalidations are auditable and consistent.
 
 Sites that previously used raw CF CLI (Phase 2 migration targets):
-- `ffreis-flemming-infra/cmd/deliver.go:373` — inline CloudFront SDK call (tech debt; migrate to this flag)
-- `ffreis-tracker-sdk/.github/workflows/cdn-publish.yml` — raw aws CLI call (migrate to packer)
+- a private infra repo`s deliver command — inline CloudFront SDK call (tech debt; migrate to this flag)
+- a private tracker SDK repo`s cdn-publish workflow — raw aws CLI call (migrate to packer)
 - `ffreis-platform-project-template/.github/workflows/deploy.yml` — raw aws CLI call (migrate to packer)
 
 ## Testing conventions
