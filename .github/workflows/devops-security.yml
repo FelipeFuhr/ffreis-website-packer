@@ -52,7 +52,7 @@ jobs:
       actions: read
       contents: read
       security-events: write
-    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-codeql.yml@d9792d01b442d7f2d3d2c6855cb312d885594e0f # v1.2.1
+    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-codeql.yml@b9c2640bf692a05e04dc6456682182bbe331e434 # v1.2.3
     with:
       languages: "go"
       source-root: "."
