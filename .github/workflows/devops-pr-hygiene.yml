@@ -34,7 +34,7 @@ jobs:
       contents: read
       pull-requests: write
       issues: write
-    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-labeler.yml@fa75af8c39c2ebabfebd5d6903fb4727436a896e
+    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-labeler.yml@b9c2640bf692a05e04dc6456682182bbe331e434
     with:
       rules-json: |-
         [
