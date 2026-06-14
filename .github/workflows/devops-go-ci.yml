@@ -22,7 +22,7 @@ concurrency:
 
 jobs:
   mod-tidy:
-    timeout-minutes: 15
+    # scan-fix(actionlint:timeout-minutes on uses): forbidden on uses: jobs — moved inside the reusable workflow
     permissions:
       contents: read
     uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-mod-tidy-check.yml@d9b0146bb491bf06a79c9c6289034537522cbed3
@@ -31,7 +31,6 @@ jobs:
       working-directory: "."
 
   fmt:
-    timeout-minutes: 15
     permissions:
       contents: read
     uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-fmt.yml@d9b0146bb491bf06a79c9c6289034537522cbed3
@@ -40,7 +39,6 @@ jobs:
       working-directory: "."
 
   lint:
-    timeout-minutes: 15
     needs: [fmt]
     permissions:
       contents: read
@@ -51,7 +49,6 @@ jobs:
       working-directory: "."
 
   test:
-    timeout-minutes: 30
     if: ${{ !github.event.pull_request.draft }}
     needs: [fmt]
     permissions:
