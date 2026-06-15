@@ -1,3 +1,7 @@
+<!-- ffreis-badges:start -->
+[![CI](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/FelipeFuhr/ffreis-badges/main/badges/ffreis-website-packer/ci.json)](https://github.com/FelipeFuhr/ffreis-website-packer/actions)
+<!-- ffreis-badges:end -->
+
 ## website-packer
 
 This repo provides `website-packer`, a Go CLI that performs a safe "true sync" of a built website directory to an S3 bucket prefix:
