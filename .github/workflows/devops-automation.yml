@@ -2,7 +2,7 @@ name: DevOps / Automation
 
 on:
   schedule:
-    - cron: "0 3 * * 0" # Sundays 03:00 UTC
+    - cron: "5 20 7 * *"  # monthly scattered (was: 0 3 * * 0)
   workflow_dispatch:
   push:
     branches: [main]
@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   scorecard:
-    timeout-minutes: 15
+    # scan-fix(actionlint:timeout-minutes on uses): timeout-minutes on a uses: job is forbidden — moved inside the reusable workflow
     if: vars.SCORECARD_ENABLED == 'true' && github.event_name != 'pull_request'
     permissions:
       contents: read
@@ -25,7 +25,6 @@ jobs:
       upload-sarif: true
 
   stale:
-    timeout-minutes: 15
     if: vars.STALE_ENABLED == 'true' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
     permissions:
       contents: read
@@ -36,7 +35,6 @@ jobs:
       only: "both"
 
   release-please:
-    timeout-minutes: 30
     if: vars.RELEASE_PLEASE_ENABLED == 'true' && github.event_name == 'push'
     permissions:
       contents: write

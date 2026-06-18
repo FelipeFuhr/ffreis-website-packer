@@ -2,7 +2,7 @@ name: CodeQL
 
 on:
   schedule:
-    - cron: "42 15 * * 1"
+    - cron: "15 3 23 * *"  # monthly scattered (was: 42 15 * * 1)
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -10,7 +10,7 @@ concurrency:
 
 jobs:
   codeql:
-    timeout-minutes: 30
+    # scan-fix(actionlint:timeout-minutes on uses): forbidden on uses: jobs — moved inside the reusable workflow
     # GitHub Code Scanning can be enabled/disabled per-repo.
     # Enable explicitly by setting repository variable:
     #   CODEQL_ENABLED=true
