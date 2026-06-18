@@ -35,7 +35,7 @@ jobs:
               - '!docs/**'
 
   security-fs:
-    timeout-minutes: 30
+    # scan-fix(actionlint:timeout-minutes on uses): forbidden on uses: jobs — moved inside the reusable workflow
     permissions:
       contents: read
       actions: read
@@ -48,7 +48,6 @@ jobs:
       scan-history: true
       upload-sarif: false
   codeql:
-    timeout-minutes: 30
     if: ${{ github.event_name != 'pull_request' }}
     permissions:
       actions: read
@@ -60,7 +59,6 @@ jobs:
       source-root: "."
 
   govulncheck:
-    timeout-minutes: 30
     permissions:
       contents: read
     uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-security.yml@d9b0146bb491bf06a79c9c6289034537522cbed3
@@ -69,7 +67,6 @@ jobs:
       working-directory: "."
 
   semgrep:
-    timeout-minutes: 30
     permissions:
       contents: read
       security-events: write
@@ -85,7 +82,6 @@ jobs:
         needs.changes.result == 'skipped' ||
         needs.changes.outputs.code == 'true'
       )
-    timeout-minutes: 30
     permissions:
       contents: read
       actions: read
@@ -96,7 +92,6 @@ jobs:
       upload-sarif: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false }}
 
   snyk:
-    timeout-minutes: 30
     # Disabled by default because reusable workflow will fail when SNYK_TOKEN
     # is missing/empty. Enable explicitly by setting repository variable:
     #   SNYK_ENABLED=true
