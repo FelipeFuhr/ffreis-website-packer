@@ -11,15 +11,15 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/cloudfront/types"
 )
 
-// cfInvalidateClient is satisfied by cloudfront.Client and allows interface-based testing.
-type cfInvalidateClient interface {
+// cfInvalidator is satisfied by cloudfront.Client and allows interface-based testing.
+type cfInvalidator interface {
 	CreateInvalidation(ctx context.Context, params *cloudfront.CreateInvalidationInput, optFns ...func(*cloudfront.Options)) (*cloudfront.CreateInvalidationOutput, error)
 }
 
 // InvalidateDistribution creates a CloudFront invalidation for distributionID
 // with the given comma-separated path patterns (e.g. "/*" or "/css/*,/js/*").
 // It fires the invalidation and returns without waiting for completion.
-func InvalidateDistribution(ctx context.Context, client cfInvalidateClient, distributionID, paths string) error {
+func InvalidateDistribution(ctx context.Context, client cfInvalidator, distributionID, paths string) error {
 	items := splitPaths(paths)
 	if len(items) == 0 {
 		return fmt.Errorf("cloudfront invalidation requires at least one path pattern")

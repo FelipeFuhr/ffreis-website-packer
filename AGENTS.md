@@ -48,7 +48,7 @@ Sites that previously used raw CF CLI (Phase 2 migration targets):
 ## Testing conventions
 
 - All tests in `internal/packer/` use interface-based mocks (see `s3PutDeleteClient`,
-  `cfInvalidateClient`) rather than the real AWS SDK. No real AWS calls in tests.
+  `cfInvalidator`) rather than the real AWS SDK. No real AWS calls in tests.
 - `cloudfront_test.go` mirrors the pattern in `s3_partial_failure_test.go`.
 - Run `make test` (wraps `go test -race -shuffle=on ./...`).
 
