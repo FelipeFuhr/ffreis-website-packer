@@ -20,7 +20,7 @@ jobs:
       actions: read
       security-events: write
       id-token: write
-    uses: ffreis-org/ffreis-workflows-general/.github/workflows/general-scorecard.yml@5dfbb4986ceb88f6518fa719da3a255294cf03cf
+    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-scorecard.yml@5dfbb4986ceb88f6518fa719da3a255294cf03cf
     with:
       upload-sarif: true
 
@@ -30,7 +30,7 @@ jobs:
       contents: read
       issues: write
       pull-requests: write
-    uses: ffreis-org/ffreis-workflows-general/.github/workflows/general-stale.yml@5dfbb4986ceb88f6518fa719da3a255294cf03cf
+    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-stale.yml@5dfbb4986ceb88f6518fa719da3a255294cf03cf
     with:
       only: "both"
 
@@ -39,7 +39,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-    uses: ffreis-org/ffreis-workflows-general/.github/workflows/general-release-please.yml@fa75af8c39c2ebabfebd5d6903fb4727436a896e
+    uses: FelipeFuhr/ffreis-workflows-general/.github/workflows/general-release-please.yml@fa75af8c39c2ebabfebd5d6903fb4727436a896e
     with:
       target-branch: "main"
     secrets:
