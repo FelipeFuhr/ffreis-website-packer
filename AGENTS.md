@@ -49,8 +49,22 @@ Sites that previously used raw CF CLI (Phase 2 migration targets):
 
 - All tests in `internal/packer/` use interface-based mocks (see `s3PutDeleteClient`,
   `cfInvalidator`) rather than the real AWS SDK. No real AWS calls in tests.
+- `cmd/website-packer` follows the same convention: `run()` only parses args and
+  constructs real AWS clients; the actual discover → plan → upload/delete →
+  invalidate pipeline lives in `sync()`, which takes injectable `s3SyncClient`/
+  `cfInvalidator` interfaces so `main_sync_test.go` can exercise every branch
+  with fakes (see `fakeS3`/`fakeCF` there) instead of hitting real AWS.
 - `cloudfront_test.go` mirrors the pattern in `s3_partial_failure_test.go`.
 - Run `make test` (wraps `go test -race -shuffle=on ./...`).
+- `make coverage-gate` enforces `COVERAGE_MIN` (75%, fleet floor). `make mutation`
+  runs gremlins mutation testing (scoped to `./internal/...`, threshold 60).
+- `contentTypeForPath` (`internal/packer/website.go`) checks its explicit
+  extension table **before** falling back to `mime.TypeByExtension` — not
+  after. `mime.TypeByExtension` also consults the host's `/etc/mime.types` on
+  Unix, which differs between machines; checking the table first keeps the
+  served Content-Type for known web-asset extensions deterministic regardless
+  of which environment runs the sync. Don't reorder this without re-verifying
+  which extensions the local `mime` package resolves on its own.
 
 ## Keeping this file current
 
