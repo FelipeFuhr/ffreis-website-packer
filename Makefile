@@ -5,13 +5,19 @@ GO ?= go
 GO_IMAGE ?= golang:1.22
 CONTAINER_RUNTIME ?= docker
 
-.PHONY: help fmt-check test vet check check-container fmt-check-container test-container vet-container
+COVERAGE_MIN       ?= 75
+MUTATION_PACKAGES  ?= ./internal/...
+MUTATION_THRESHOLD ?= 60
+
+.PHONY: help fmt-check test vet check check-container fmt-check-container test-container vet-container \
+        coverage-gate integration-coverage-gate mutation
 
 help:
 	@echo "Targets:"
 	@echo "  make check                (fmt-check + vet + test)"
 	@echo "  make check-container       (containerized fmt-check + vet + test)"
 	@echo "  make test|test-container"
+	@echo "  make coverage-gate|integration-coverage-gate|mutation"
 
 fmt-check:
 	@unformatted="$$(gofmt -l .)"; \
@@ -27,7 +33,17 @@ vet:
 test:
 	$(GO) test -race -shuffle=on ./... -count=1
 
-check: fmt-check vet test
+coverage-gate: ## Run tests with coverage and fail if below COVERAGE_MIN
+	@COVERAGE_MIN="$(COVERAGE_MIN)" ./scripts/hooks/check_coverage_gate.sh
+
+integration-coverage-gate: ## Run //go:build integration tests with coverage and fail if below COVERAGE_MIN (no-op if none exist)
+	@COVERAGE_MIN="$(COVERAGE_MIN)" ./scripts/hooks/check_integration_coverage_gate.sh
+
+mutation: ## Run mutation testing with gremlins (slow — CI only)
+	@which gremlins >/dev/null 2>&1 || go install github.com/go-gremlins/gremlins/cmd/gremlins@latest
+	gremlins unleash --threshold-efficacy $(MUTATION_THRESHOLD) $(MUTATION_PACKAGES)
+
+check: fmt-check vet test coverage-gate
 
 container-run = $(CONTAINER_RUNTIME) run --rm -t \
 	-v "$(PWD):/work" -w /work \

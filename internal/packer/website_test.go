@@ -2,6 +2,7 @@ package packer
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"sort"
@@ -204,5 +205,249 @@ func TestListRemoteKeysPaginates(t *testing.T) {
 	sort.Strings(keys)
 	if len(keys) != 3 || keys[0] != testRemoteKeyAppJS || keys[1] != testRemoteKeyIndexHTML || keys[2] != testRemoteKeyOldJS {
 		t.Fatalf("unexpected remote keys: %v", keys)
+	}
+}
+
+// erroringListS3 fails on the page requested by errOnPage (0-indexed), so
+// callers can exercise ListRemoteKeys' mid-pagination error path.
+type erroringListS3 struct {
+	errOnPage int
+	calls     int
+}
+
+func (f *erroringListS3) ListObjectsV2(_ context.Context, params *s3.ListObjectsV2Input, _ ...func(*s3.Options)) (*s3.ListObjectsV2Output, error) {
+	page := f.calls
+	f.calls++
+	if page == f.errOnPage {
+		return nil, errors.New("boom: list objects failed")
+	}
+	return &s3.ListObjectsV2Output{
+		Contents:              []types.Object{{Key: strPtr(testRemoteKeyIndexHTML)}},
+		IsTruncated:           boolPtr(true),
+		NextContinuationToken: strPtr("t1"),
+	}, nil
+}
+
+func TestListRemoteKeysPropagatesPageError(t *testing.T) {
+	t.Parallel()
+
+	s3c := &erroringListS3{errOnPage: 0}
+	_, err := ListRemoteKeys(context.Background(), s3c, testBucket, testPrefix)
+	if err == nil {
+		t.Fatal(testExpectedErrorGotNil)
+	}
+}
+
+func TestListRemoteKeysSkipsDirectoryMarkers(t *testing.T) {
+	t.Parallel()
+
+	// S3 "folder" placeholder objects end in "/" and must not be treated as
+	// syncable website files.
+	s3c := &staticListS3{
+		keys: []string{testRemoteKeyIndexHTML, "p/assets/"},
+	}
+	remote, err := ListRemoteKeys(context.Background(), s3c, testBucket, testPrefix)
+	if err != nil {
+		t.Fatalf(testUnexpectedErrorFmt, err)
+	}
+	if _, ok := remote["p/assets/"]; ok {
+		t.Fatal("directory-marker key p/assets/ should have been skipped")
+	}
+	if _, ok := remote[testRemoteKeyIndexHTML]; !ok {
+		t.Fatal("expected regular key to be present")
+	}
+}
+
+func TestListRemoteKeysSkipsNilKeys(t *testing.T) {
+	t.Parallel()
+
+	s3c := &nilKeyListS3{}
+	remote, err := ListRemoteKeys(context.Background(), s3c, testBucket, testPrefix)
+	if err != nil {
+		t.Fatalf(testUnexpectedErrorFmt, err)
+	}
+	if len(remote) != 0 {
+		t.Fatalf("expected no keys, got %v", remote)
+	}
+}
+
+type staticListS3 struct{ keys []string }
+
+func (f *staticListS3) ListObjectsV2(_ context.Context, _ *s3.ListObjectsV2Input, _ ...func(*s3.Options)) (*s3.ListObjectsV2Output, error) {
+	var contents []types.Object
+	for _, k := range f.keys {
+		contents = append(contents, types.Object{Key: strPtr(k)})
+	}
+	return &s3.ListObjectsV2Output{Contents: contents, IsTruncated: boolPtr(false)}, nil
+}
+
+type nilKeyListS3 struct{}
+
+func (f *nilKeyListS3) ListObjectsV2(_ context.Context, _ *s3.ListObjectsV2Input, _ ...func(*s3.Options)) (*s3.ListObjectsV2Output, error) {
+	return &s3.ListObjectsV2Output{Contents: []types.Object{{Key: nil}}, IsTruncated: boolPtr(false)}, nil
+}
+
+func TestDiscoverWebsiteObjectsMissingDir(t *testing.T) {
+	t.Parallel()
+
+	_, err := DiscoverWebsiteObjects(filepath.Join(t.TempDir(), "does-not-exist"), testSitePrefix)
+	if err == nil {
+		t.Fatal(testExpectedErrorGotNil)
+	}
+}
+
+func TestDiscoverWebsiteObjectsRejectsFileArg(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	file := filepath.Join(dir, "not-a-dir")
+	if err := os.WriteFile(file, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := DiscoverWebsiteObjects(file, testSitePrefix)
+	if err == nil {
+		t.Fatal(testExpectedErrorGotNil)
+	}
+}
+
+func TestDiscoverWebsiteObjectsEmptyDirErrors(t *testing.T) {
+	t.Parallel()
+
+	_, err := DiscoverWebsiteObjects(t.TempDir(), testSitePrefix)
+	if err == nil {
+		t.Fatal(testExpectedErrorGotNil)
+	}
+}
+
+func TestDiscoverWebsiteObjectsSkipsDSStoreAndDirs(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, "sub"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, ".DS_Store"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "sub", "keep.txt"), []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	objs, err := DiscoverWebsiteObjects(dir, testSitePrefix)
+	if err != nil {
+		t.Fatalf(testUnexpectedErrorFmt, err)
+	}
+	if len(objs) != 1 || objs[0].Key != testSitePrefix+"sub/keep.txt" {
+		t.Fatalf("unexpected objects: %+v", objs)
+	}
+}
+
+func TestPutWebsiteObjectRejectsEmptyKey(t *testing.T) {
+	t.Parallel()
+
+	s3c := &fakeS3{}
+	err := PutWebsiteObject(context.Background(), s3c, testBucket, WebsiteObject{Path: "irrelevant", Key: "  "})
+	if err == nil {
+		t.Fatal(testExpectedErrorGotNil)
+	}
+	if len(s3c.putCalls) != 0 {
+		t.Fatal("PutObject should not be called for an empty key")
+	}
+}
+
+func TestPutWebsiteObjectMissingFile(t *testing.T) {
+	t.Parallel()
+
+	s3c := &fakeS3{}
+	err := PutWebsiteObject(context.Background(), s3c, testBucket, WebsiteObject{
+		Path: filepath.Join(t.TempDir(), "missing.txt"),
+		Key:  "sites/dev/missing.txt",
+	})
+	if err == nil {
+		t.Fatal(testExpectedErrorGotNil)
+	}
+}
+
+func TestPutWebsiteObjectUploadsWithContentTypeAndCacheControl(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app.js")
+	if err := os.WriteFile(path, []byte("console.log(1)"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	s3c := &fakeS3{}
+	obj := WebsiteObject{
+		Path:         path,
+		Key:          "sites/dev/app.js",
+		ContentType:  "application/javascript; charset=utf-8",
+		CacheControl: cacheControlDefault,
+	}
+	if err := PutWebsiteObject(context.Background(), s3c, testBucket, obj); err != nil {
+		t.Fatalf(testUnexpectedErrorFmt, err)
+	}
+	if len(s3c.putCalls) != 1 {
+		t.Fatalf("PutObject calls = %d, want 1", len(s3c.putCalls))
+	}
+	put := s3c.putCalls[0]
+	if put.Key == nil || *put.Key != obj.Key {
+		t.Fatalf("unexpected Key: %v", put.Key)
+	}
+	if put.ContentType == nil || *put.ContentType != obj.ContentType {
+		t.Fatalf("unexpected ContentType: %v", put.ContentType)
+	}
+	if put.CacheControl == nil || *put.CacheControl != obj.CacheControl {
+		t.Fatalf("unexpected CacheControl: %v", put.CacheControl)
+	}
+}
+
+func TestContentTypeForPath(t *testing.T) {
+	t.Parallel()
+
+	cases := map[string]string{
+		"a.svg":         "image/svg+xml",
+		"a.webmanifest": "application/manifest+json",
+		"a.css":         "text/css; charset=utf-8",
+		"a.js":          "application/javascript; charset=utf-8",
+		"a.json":        "application/json; charset=utf-8",
+		"a.txt":         "text/plain; charset=utf-8",
+		"a.xml":         "application/xml; charset=utf-8",
+		"a.html":        "text/html; charset=utf-8",
+		"a.htm":         "text/html; charset=utf-8",
+		"a.png":         "image/png",
+		"a.jpg":         "image/jpeg",
+		"a.jpeg":        "image/jpeg",
+		"a.gif":         "image/gif",
+		"a.webp":        "image/webp",
+		"a.woff2":       "font/woff2",
+		"a.woff":        "font/woff",
+		"a.ttf":         "font/ttf",
+		"a.unknownext":  "application/octet-stream",
+	}
+	for rel, want := range cases {
+		if got := contentTypeForPath(rel); got != want {
+			t.Errorf("contentTypeForPath(%q) = %q, want %q", rel, got, want)
+		}
+	}
+}
+
+func TestCacheControlForPath(t *testing.T) {
+	t.Parallel()
+
+	cases := map[string]string{
+		"index.html":       cacheControlNoCache,
+		"index.htm":        cacheControlNoCache,
+		"sitemap.xml":      cacheControlNoCache,
+		"robots.txt":       cacheControlNoCache,
+		"app.abcdef01.css": cacheControlImmutable,
+		"app.js":           cacheControlDefault,
+		"favicon.ico":      cacheControlDefault,
+	}
+	for rel, want := range cases {
+		if got := cacheControlForPath(rel); got != want {
+			t.Errorf("cacheControlForPath(%q) = %q, want %q", rel, got, want)
+		}
 	}
 }

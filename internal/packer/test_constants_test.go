@@ -1,7 +1,8 @@
 package packer
 
 const (
-	testUnexpectedErrorFmt = "unexpected error: %v"
+	testUnexpectedErrorFmt  = "unexpected error: %v"
+	testExpectedErrorGotNil = "expected error, got nil"
 
 	testSitePrefix = "sites/dev/"
 

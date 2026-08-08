@@ -28,6 +28,22 @@ type options struct {
 	cloudfrontPaths string
 }
 
+// s3SyncClient is satisfied by *s3.Client. Declaring it locally (rather than
+// importing an unexported type from internal/packer) lets tests inject a
+// fake here without touching real AWS — mirroring the interface-based mock
+// convention already used throughout internal/packer.
+type s3SyncClient interface {
+	ListObjectsV2(ctx context.Context, params *s3.ListObjectsV2Input, optFns ...func(*s3.Options)) (*s3.ListObjectsV2Output, error)
+	PutObject(ctx context.Context, params *s3.PutObjectInput, optFns ...func(*s3.Options)) (*s3.PutObjectOutput, error)
+	DeleteObjects(ctx context.Context, params *s3.DeleteObjectsInput, optFns ...func(*s3.Options)) (*s3.DeleteObjectsOutput, error)
+}
+
+// cfInvalidator is satisfied by *cloudfront.Client; declared locally for the
+// same test-injection reason as s3SyncClient.
+type cfInvalidator interface {
+	CreateInvalidation(ctx context.Context, params *cloudfront.CreateInvalidationInput, optFns ...func(*cloudfront.Options)) (*cloudfront.CreateInvalidationOutput, error)
+}
+
 func main() {
 	os.Exit(run(os.Args[1:]))
 }
@@ -47,27 +63,39 @@ func run(args []string) int {
 		return 1
 	}
 
+	s3Client := s3.NewFromConfig(awsCfg)
+	var cfClient cfInvalidator
+	if opts.cloudfrontID != "" {
+		cfClient = cloudfront.NewFromConfig(awsCfg)
+	}
+
+	return sync(ctx, opts, s3Client, cfClient, os.Stdout, os.Stderr)
+}
+
+// sync runs the actual discover → plan → upload/delete → invalidate pipeline
+// against already-constructed clients, so tests can exercise every branch
+// with fakes instead of hitting real AWS (see main_sync_test.go).
+func sync(ctx context.Context, opts options, s3Client s3SyncClient, cfClient cfInvalidator, stdout, stderr io.Writer) int {
 	prefix, err := packer.NormalizePrefix(opts.prefix)
 	if err != nil {
-		writeLine(os.Stderr, err.Error())
+		writeLine(stderr, err.Error())
 		return 2
 	}
 
 	local, err := packer.DiscoverWebsiteObjects(opts.dir, prefix)
 	if err != nil {
-		writeErrorLine(os.Stderr, "website discovery failed: ", err)
+		writeErrorLine(stderr, "website discovery failed: ", err)
 		return 1
 	}
 
-	s3Client := s3.NewFromConfig(awsCfg)
 	remote, err := packer.ListRemoteKeys(ctx, s3Client, opts.bucket, prefix)
 	if err != nil {
-		writeErrorLine(os.Stderr, "failed listing s3://"+opts.bucket+"/"+prefix+": ", err)
+		writeErrorLine(stderr, "failed listing s3://"+opts.bucket+"/"+prefix+": ", err)
 		return 1
 	}
 
 	plan := packer.BuildWebsitePlan(local, remote, opts.noDelete)
-	printPlan(plan, opts.bucket, prefix, opts.dryRun)
+	printPlan(stdout, plan, opts.bucket, prefix, opts.dryRun)
 
 	if opts.dryRun {
 		return 0
@@ -75,29 +103,28 @@ func run(args []string) int {
 
 	for _, o := range plan.Uploads {
 		if err := packer.PutWebsiteObject(ctx, s3Client, opts.bucket, o); err != nil {
-			writeErrorLine(os.Stderr, "upload failed for "+o.Key+": ", err)
+			writeErrorLine(stderr, "upload failed for "+o.Key+": ", err)
 			return 1
 		}
 	}
 	if err := packer.DeleteKeys(ctx, s3Client, opts.bucket, plan.Deletes); err != nil {
-		writeErrorLine(os.Stderr, "delete failed: ", err)
+		writeErrorLine(stderr, "delete failed: ", err)
 		return 1
 	}
 
 	if opts.cloudfrontID != "" {
-		cfClient := cloudfront.NewFromConfig(awsCfg)
 		paths := opts.cloudfrontPaths
 		if paths == "" {
 			paths = "/*"
 		}
-		writeLine(os.Stdout, "invalidating cloudfront distribution "+opts.cloudfrontID+" paths="+paths)
+		writeLine(stdout, "invalidating cloudfront distribution "+opts.cloudfrontID+" paths="+paths)
 		if err := packer.InvalidateDistribution(ctx, cfClient, opts.cloudfrontID, paths); err != nil {
-			writeErrorLine(os.Stderr, "cloudfront invalidation failed: ", err)
+			writeErrorLine(stderr, "cloudfront invalidation failed: ", err)
 			return 1
 		}
 	}
 
-	writeLine(os.Stdout, "done: uploaded="+strconv.Itoa(len(plan.Uploads))+" deleted="+strconv.Itoa(len(plan.Deletes)))
+	writeLine(stdout, "done: uploaded="+strconv.Itoa(len(plan.Uploads))+" deleted="+strconv.Itoa(len(plan.Deletes)))
 	return 0
 }
 
@@ -135,16 +162,16 @@ func loadAWSConfig(ctx context.Context, region string) (aws.Config, error) {
 	return config.LoadDefaultConfig(ctx)
 }
 
-func printPlan(plan packer.WebsitePlan, bucket, prefix string, dryRun bool) {
+func printPlan(w io.Writer, plan packer.WebsitePlan, bucket, prefix string, dryRun bool) {
 	mode := "apply"
 	if dryRun {
 		mode = "dry-run"
 	}
-	writeLine(os.Stdout, "website-packer ("+mode+")")
-	writeLine(os.Stdout, "bucket: "+bucket)
-	writeLine(os.Stdout, "prefix: "+prefix)
-	writeLine(os.Stdout, "uploads: "+strconv.Itoa(len(plan.Uploads)))
-	writeLine(os.Stdout, "deletes: "+strconv.Itoa(len(plan.Deletes)))
+	writeLine(w, "website-packer ("+mode+")")
+	writeLine(w, "bucket: "+bucket)
+	writeLine(w, "prefix: "+prefix)
+	writeLine(w, "uploads: "+strconv.Itoa(len(plan.Uploads)))
+	writeLine(w, "deletes: "+strconv.Itoa(len(plan.Deletes)))
 }
 
 func writeLine(w io.Writer, line string) {
