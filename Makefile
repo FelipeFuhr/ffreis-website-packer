@@ -4,12 +4,13 @@ SHELL := /usr/bin/env bash
 GO ?= go
 GO_IMAGE ?= golang:1.22
 CONTAINER_RUNTIME ?= docker
+GOLANGCI_LINT ?= golangci-lint
 
 COVERAGE_MIN       ?= 75
 MUTATION_PACKAGES  ?= ./internal/...
 MUTATION_THRESHOLD ?= 60
 
-.PHONY: help fmt-check test vet check check-container fmt-check-container test-container vet-container \
+.PHONY: help fmt-check test vet lint check check-container fmt-check-container test-container vet-container \
         coverage-gate integration-coverage-gate mutation
 
 help:
@@ -17,6 +18,7 @@ help:
 	@echo "  make check                (fmt-check + vet + test)"
 	@echo "  make check-container       (containerized fmt-check + vet + test)"
 	@echo "  make test|test-container"
+	@echo "  make lint                 (vet + optional golangci-lint)"
 	@echo "  make coverage-gate|integration-coverage-gate|mutation"
 
 fmt-check:
@@ -29,6 +31,17 @@ fmt-check:
 
 vet:
 	$(GO) vet ./...
+
+# scan-fix(lefthook:go.yml lint command): added so the platform-standards
+# lefthook pre-commit "lint" hook (added alongside lefthook.yml in this PR)
+# has a `make lint` target to call — this repo previously ran golangci-lint
+# only via CI's go-lint.yml, never locally.
+lint: vet
+	@if command -v $(GOLANGCI_LINT) >/dev/null 2>&1; then \
+		$(GOLANGCI_LINT) run ./...; \
+	else \
+		echo "golangci-lint not installed, skipping (CI still runs it)"; \
+	fi
 
 test:
 	$(GO) test -race -shuffle=on ./... -count=1

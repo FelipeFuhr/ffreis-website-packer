@@ -3,6 +3,7 @@ package packer
 import (
 	"context"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -24,6 +25,12 @@ func InvalidateDistribution(ctx context.Context, client cfInvalidator, distribut
 	if len(items) == 0 {
 		return fmt.Errorf("cloudfront invalidation requires at least one path pattern")
 	}
+	// scan-fix(gosec:G115): explicit bounds check before the int->int32
+	// narrowing conversion below — len(items) is CLI-flag-derived and never
+	// realistically approaches this, but gosec can't prove that statically.
+	if len(items) > math.MaxInt32 {
+		return fmt.Errorf("too many cloudfront invalidation paths: %d", len(items))
+	}
 
 	// CallerReference must be unique per invalidation; timestamp at millisecond
 	// resolution is sufficient — two syncs within 1ms of each other is not a
@@ -35,6 +42,7 @@ func InvalidateDistribution(ctx context.Context, client cfInvalidator, distribut
 		InvalidationBatch: &types.InvalidationBatch{
 			CallerReference: aws.String(caller),
 			Paths: &types.Paths{
+				//nolint:gosec // G115: guarded by the MaxInt32 bounds check above; gosec can't see the guard
 				Quantity: aws.Int32(int32(len(items))),
 				Items:    items,
 			},

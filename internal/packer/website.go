@@ -168,7 +168,7 @@ func BuildWebsitePlan(local []WebsiteObject, remote map[string]struct{}, noDelet
 	return WebsitePlan{Uploads: local, Deletes: deletes}
 }
 
-func PutWebsiteObject(ctx context.Context, client s3PutDeleteClient, bucket string, o WebsiteObject) error {
+func PutWebsiteObject(ctx context.Context, client s3PutDeleteClient, bucket string, o WebsiteObject) (err error) {
 	if strings.TrimSpace(o.Key) == "" {
 		return errors.New("website object key is empty")
 	}
@@ -176,7 +176,13 @@ func PutWebsiteObject(ctx context.Context, client s3PutDeleteClient, bucket stri
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	// scan-fix(golangci:errcheck): surface a Close error via the named return,
+	// but don't clobber a real PutObject failure with it.
+	defer func() {
+		if cerr := f.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
 
 	input := &s3.PutObjectInput{
 		Bucket: aws.String(bucket),

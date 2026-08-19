@@ -1,0 +1,13 @@
+remotes:
+  - git_url: https://github.com/FelipeFuhr/ffreis-platform-standards
+    ref: v1.10.1
+    configs:
+      - lefthook/base.yml
+      - lefthook/go.yml
+      - lefthook/actionlint.yml
+
+pre-push:
+  parallel: false
+  commands:
+    check:
+      run: make check

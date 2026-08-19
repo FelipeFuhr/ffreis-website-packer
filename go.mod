@@ -1,6 +1,8 @@
 module github.com/felipefuhr/ffreis-website-packer
 
-go 1.25.8
+// scan-fix(govulncheck): bumped 1.25.8 -> 1.25.13 — fixes 8 stdlib CVEs
+// (crypto/tls, net/textproto, crypto/x509, net, net/http) present in 1.25.8.
+go 1.25.13
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.41.7
