@@ -168,7 +168,7 @@ func BuildWebsitePlan(local []WebsiteObject, remote map[string]struct{}, noDelet
 	return WebsitePlan{Uploads: local, Deletes: deletes}
 }
 
-func PutWebsiteObject(ctx context.Context, client s3PutDeleteClient, bucket string, o WebsiteObject) error {
+func PutWebsiteObject(ctx context.Context, client s3PutDeleteClient, bucket string, o WebsiteObject) (err error) {
 	if strings.TrimSpace(o.Key) == "" {
 		return errors.New("website object key is empty")
 	}
@@ -176,7 +176,13 @@ func PutWebsiteObject(ctx context.Context, client s3PutDeleteClient, bucket stri
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	// scan-fix(golangci:errcheck): surface a Close error via the named return,
+	// but don't clobber a real PutObject failure with it.
+	defer func() {
+		if cerr := f.Close(); cerr != nil && err == nil {
+			err = cerr
+		}
+	}()
 
 	input := &s3.PutObjectInput{
 		Bucket: aws.String(bucket),
@@ -193,6 +199,21 @@ func PutWebsiteObject(ctx context.Context, client s3PutDeleteClient, bucket stri
 	return err
 }
 
+// scan-fix(coverage:dead-code): the explicit table below is now checked
+// BEFORE mime.TypeByExtension, not after. mime.TypeByExtension consults the
+// host's /etc/mime.types on Unix in addition to Go's built-in table, and that
+// file's contents (or absence) differ between a developer's machine and a CI
+// runner. With the old ordering, mime.TypeByExtension already returned a
+// non-empty value for nearly every extension listed below (verified: .css,
+// .js, .json, .txt, .xml, .html/.htm, .png, .jpg/.jpeg, .gif, .webp, .woff2,
+// .woff, .ttf all resolve on a stock Linux install) — so the switch was
+// unreachable dead code, and the Content-Type actually served for e.g. a
+// .js file silently depended on which machine ran the sync (potentially
+// "text/javascript; charset=utf-8" locally vs. a different value in CI),
+// rather than the deterministic value this tool intends. Checking the table
+// first makes every case here live and the served Content-Type identical
+// regardless of environment; mime.TypeByExtension is now only a fallback for
+// extensions this tool doesn't explicitly know about.
 func contentTypeForPath(rel string) string {
 	ext := strings.ToLower(path.Ext(rel))
 	switch ext {
@@ -200,12 +221,6 @@ func contentTypeForPath(rel string) string {
 		return "image/svg+xml"
 	case ".webmanifest":
 		return "application/manifest+json"
-	}
-	ct := mime.TypeByExtension(ext)
-	if ct != "" {
-		return ct
-	}
-	switch ext {
 	case ".css":
 		return "text/css; charset=utf-8"
 	case ".js":
@@ -232,9 +247,11 @@ func contentTypeForPath(rel string) string {
 		return "font/woff"
 	case ".ttf":
 		return "font/ttf"
-	default:
-		return "application/octet-stream"
 	}
+	if ct := mime.TypeByExtension(ext); ct != "" {
+		return ct
+	}
+	return "application/octet-stream"
 }
 
 func cacheControlForPath(rel string) string {

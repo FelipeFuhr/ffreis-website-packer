@@ -63,7 +63,9 @@ jobs:
       contents: read
     uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-security.yml@d9b0146bb491bf06a79c9c6289034537522cbed3
     with:
-      go-version: "1.25.8"
+      # scan-fix(govulncheck): bumped 1.25.8 -> 1.25.13 to match go.mod and
+      # the same fix applied to devops-go-ci.yml's test job.
+      go-version: "1.25.13"
       working-directory: "."
 
   semgrep:
